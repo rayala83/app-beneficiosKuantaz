@@ -18,6 +18,4 @@ use App\Http\Controllers\ApiController;
 Route::get('/', function () {
     return view('welcome');
 });
-Route::get('/beneficios', [ApiController::class, 'beneficios']);
-Route::get('/filtros', [ApiController::class, 'filtros']);
 Route::get('/datos', [ApiController::class, 'relacionDatos']);

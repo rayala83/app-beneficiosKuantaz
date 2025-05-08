@@ -5,8 +5,44 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
+/**
+ * @OA\info(
+ *              title="Api Beneficios Kuantaz",
+ *              version="1.0",
+ *              description="Manejo de informacion de benefios de usuarios"
+ * )
+ * 
+ * @OA\Server(url="http://app-beneficioskuantaz.test")
+ */
+
+
 class ApiController extends Controller
 {
+    /**
+     * Listado de Beneficios
+     * @OA\Get(
+     *          path="https://run.mocky.io/v3/8f75c4b5-ad90-49bb-bc52-f1fc0b4aad02",
+     *          tags={"Beneficios"},
+     *          @OA\Response(
+     *              response=200,
+     *              description="ok",
+     *              @OA\JsonContent(
+     *                   @OA\Property(
+     *                          type="array",
+     *                          property="rows",
+     *                          @OA\Items(
+     *                              type="object",
+     *                              @OA\Property(
+     *                                  property="id_programa",
+     *                                  type="number",
+     *                                  example="147"
+     *                              )
+     *                          )
+     *                   )
+     *              )
+     *          )
+     *        )
+     */
     public function beneficios()
     {
         $response = Http::get('https://run.mocky.io/v3/8f75c4b5-ad90-49bb-bc52-f1fc0b4aad02');
@@ -21,6 +57,33 @@ class ApiController extends Controller
     {
         $response = Http::get('https://run.mocky.io/v3/4654cafa-58d8-4846-9256-79841b29a687');
         return $response->json()['data'];
+    }
+    public function filtroMontos($resultados)
+    {
+        return collect($resultados)->filter(function ($info) {
+            $monto = (float) $info['beneficio']['monto'];
+            $min = (float) $info['filtro']['min'];
+            $max = (float) $info['filtro']['max'];
+
+            return $monto >= $min && $monto <= $max;
+        })->values();
+    }
+    public function infoBeneficios($informacion)
+    {
+        return collect($informacion)->groupBy(function ($info) {
+            return \Carbon\Carbon::parse($info['beneficio']['fecha'])->year;
+        })->map(function ($montoAnio){
+            $totalMonto = $montoAnio->sum(function ($info) {
+                return (float) $info['beneficio']['monto'];
+            });
+            return [
+                'total_monto' => $totalMonto,
+                'cantidad_beneficios' => $montoAnio->count(),
+                'beneficios' => $montoAnio->sortByDesc(function ($info) {
+                    return \Carbon\Carbon::parse($info['beneficio']['fecha']);
+                })->values(),
+            ];
+        })->sortKeysDesc();
     }
     public function relacionDatos()
     {
@@ -38,8 +101,12 @@ class ApiController extends Controller
                 'ficha' => $fichaFiltro,
             ];
         });
-        // dd($resultados);
+        
+        $filtrados = $this->filtroMontos($resultados);
 
-        return view('datos', ['datos' => $resultados]);
+        $ordenados = $this->infoBeneficios($filtrados);
+        return view('datos', ['datos' => $ordenados]);
+
     }
+
 }

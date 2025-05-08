@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ApiController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -16,3 +18,6 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+Route::get('/beneficios', [ApiController::class, 'beneficios']);
+Route::get('/filtros', [ApiController::class, 'filtros']);
+Route::get('/datos', [ApiController::class, 'relacionDatos']);

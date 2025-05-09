@@ -18,31 +18,6 @@ use Illuminate\Support\Facades\Http;
 
 class ApiController extends Controller
 {
-    /**
-     * Listado de Beneficios
-     * @OA\Get(
-     *          path="https://run.mocky.io/v3/8f75c4b5-ad90-49bb-bc52-f1fc0b4aad02",
-     *          tags={"Beneficios"},
-     *          @OA\Response(
-     *              response=200,
-     *              description="ok",
-     *              @OA\JsonContent(
-     *                   @OA\Property(
-     *                          type="array",
-     *                          property="rows",
-     *                          @OA\Items(
-     *                              type="object",
-     *                              @OA\Property(
-     *                                  property="id_programa",
-     *                                  type="number",
-     *                                  example="147"
-     *                              )
-     *                          )
-     *                   )
-     *              )
-     *          )
-     *        )
-     */
     public function beneficios()
     {
         $response = Http::get('https://run.mocky.io/v3/8f75c4b5-ad90-49bb-bc52-f1fc0b4aad02');
@@ -107,6 +82,99 @@ class ApiController extends Controller
         $ordenados = $this->infoBeneficios($filtrados);
         return view('datos', ['datos' => $ordenados]);
 
+    }
+    /**
+     * Listado de Beneficios
+     * @OA\Get(
+     *     path="/api/beneficios",
+     *     tags={"Beneficios"},
+     *     @OA\Response(
+     *         response=200,
+     *         description="ok",
+     *         @OA\JsonContent(
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="año", type="number", example=2023),
+     *                     @OA\Property(property="total_monto", type="number", example=45900),
+     *                     @OA\Property(property="cantidad", type="number", example=3),
+     *                     @OA\Property(
+     *                         property="beneficios",
+     *                         type="array",
+     *                         @OA\Items(
+     *                             type="object",
+     *                             @OA\Property(
+     *                                 property="beneficio", 
+     *                                 type="array",
+     *                                 @OA\Items(
+     *                                  @OA\Property(property="id_programa", type="number", example=130),
+     *                                  @OA\Property(property="monto", type="number", example=4500),
+     *                                  @OA\Property(property="fecha_recepcion", type="string", example="09/12/2023"),
+     *                                  @OA\Property(property="fecha", type="string", example="2023-11-09"),
+     *                                 ),
+     *                             ),
+     *                             @OA\Property(
+     *                                 property="Ficha", 
+     *                                 type="array",
+     *                                 @OA\Items(
+     *                                  @OA\Property(property="id", type="number", example=922),
+     *                                  @OA\Property(property="nombre", type="string", example="emprende"),
+     *                                  @OA\Property(property="id_programa", type="number", example=130),
+     *                                  @OA\Property(property="url", type="string", example="emprende"),
+     *                                  @OA\Property(property="categoria", type="string", example="trabajo"),
+     *                                  @OA\Property(property="descripcion", type="string", example="fondos concursables"),
+     *                                 )
+     *                             )
+     *                         )
+     *                     )
+     *                 )
+     *             )
+     *         )
+     *     )
+     * )
+     */
+
+    public function apiInfoBeneficios()
+    {
+        $beneficios = $this->beneficios();
+        $filtros = $this->filtros();
+        $fichas = $this->fichas();
+
+        $resultados = collect($beneficios)->map(function ($beneficio) use ($filtros, $fichas){
+            $filtroBeneficio = collect($filtros)->firstWhere('id_programa', $beneficio['id_programa']);
+            $fichaFiltro = collect($fichas)->firstWhere('id', $filtroBeneficio['ficha_id']);
+
+            return[
+                'beneficio' => $beneficio,
+                'filtro' => $filtroBeneficio,
+                'ficha' => $fichaFiltro,
+            ];
+        });
+
+        $filtrados = $this->filtroMontos($resultados);
+        $ordenados = $this->infoBeneficios($filtrados);
+
+        $quitarFiltro = $ordenados->map(function ($item, $anio) {
+            $fichaBeneficio = collect($item['beneficios'])->map(function($info) {
+                return[
+                    'beneficio' => $info['beneficio'],
+                    'ficha' => $info['ficha'],
+                ];
+            });
+            return [
+                'año' => $anio,
+                'total_monto' => $item['total_monto'],
+                'cantidad' => $item['cantidad_beneficios'],
+                'beneficios' => $fichaBeneficio,
+            ];
+        })->values();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $quitarFiltro
+        ]);
     }
 
 }
